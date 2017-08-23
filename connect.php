@@ -1,0 +1,1 @@
+<?phprequire_once "class/Database.php";$info = array('server'=>'localhost','username'=>'root','password'=>'','database'=>'quiz','table'=>'user');$database = new Database($info);
