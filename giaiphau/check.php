@@ -18,7 +18,7 @@ if (isset($_POST['question'])) {
 
 //echo '<pre>';print_r($_POST);echo '</pre>';
 if (isset($_POST['id']) && isset($_POST['type'])) {
-//    unset($_SESSION['action']);
+//    unset($_SESSION['time']);
     $_SESSION['testid'] = $_POST['id'];
 
     if ($_POST['type'] == 'wronganswer') {
@@ -28,7 +28,7 @@ if (isset($_POST['id']) && isset($_POST['type'])) {
                     where a.question_id = b.id
                     and c.question_id = b.id
                     and c.test_id = d.id
-                    and a.user_id = ".$_SESSION['username']."
+                    and a.user_id = ".$_SESSION['id']."
                     and d.id = ".$_POST['id']." 
                     and a.check = 0";
         $database->query($query);
@@ -60,7 +60,7 @@ if (isset($_POST['id']) && isset($_POST['type'])) {
 
                 $color = $value['check']==0 ? 'red':'blue';
 
-                $xhtml .= '<p style="padding-left:10px;display:block;font-size:13px;font-family:Arial;line-height:30px;font-weight: 600;height:30px;color: '.$color.';background:#e9ebee">'.strtoupper($value['answer']).' - Trả lời '.strtoupper($value['answerofuser']).'</p></div>';
+                $xhtml .= '<p style="padding-left:10px;display:block;font-size:13px;font-family:Arial,sans-serif;line-height:30px;font-weight: 600;height:30px;color: '.$color.';background:#e9ebee">'.strtoupper($value['answer']).' - Trả lời '.strtoupper($value['answerofuser']).'</p></div>';
 
             }
 //                $xhtml .= '</div>';
@@ -73,7 +73,7 @@ if (isset($_POST['id']) && isset($_POST['type'])) {
                     where a.question_id = b.id
                     and c.question_id = b.id
                     and c.test_id = d.id
-                    and a.user_id = ".$_SESSION['username']."
+                    and a.user_id = ".$_SESSION['id']."
                     and d.id = ".$_POST['id']." 
                     and a.check = 1";
         $database->query($query);
@@ -105,7 +105,7 @@ if (isset($_POST['id']) && isset($_POST['type'])) {
 
                 $color = $value['check']==0 ? 'red':'blue';
 
-                $xhtml .= '<p style="padding-left:10px;display:block;font-size:13px;font-family:Arial;line-height:30px;font-weight: 600;height:30px;color: '.$color.';background:#e9ebee">'.strtoupper($value['answer']).' - Trả lời '.strtoupper($value['answerofuser']).'</p></div>';
+                $xhtml .= '<p style="padding-left:10px;display:block;font-size:13px;font-family:Arial,sans-serif;line-height:30px;font-weight: 600;height:30px;color: '.$color.';background:#e9ebee">'.strtoupper($value['answer']).' - Trả lời '.strtoupper($value['answerofuser']).'</p></div>';
 
             }
 //                $xhtml .= '</div>';
@@ -117,7 +117,7 @@ if (isset($_POST['id']) && isset($_POST['type'])) {
                     where a.question_id = b.id
                     and c.question_id = b.id
                     and c.test_id = d.id
-                    and a.user_id = ".$_SESSION['username']."
+                    and a.user_id = ".$_SESSION['id']."
                     and d.id = ".$_POST['id']."";
         $database->query($query);
         $detailofdonesentence = $database->select();
@@ -148,21 +148,38 @@ if (isset($_POST['id']) && isset($_POST['type'])) {
 
                 $color = $value['check']==0 ? 'red':'blue';
 
-                $xhtml .= '<p style="padding-left:10px;display:block;font-size:13px;font-family:Arial;line-height:30px;font-weight: 600;height:30px;color: '.$color.';background:#e9ebee">'.strtoupper($value['answer']).' - Trả lời '.strtoupper($value['answerofuser']).'</p></div>';
+                $xhtml .= '<p style="padding-left:10px;display:block;font-size:13px;font-family:Arial,sans-serif;line-height:30px;font-weight: 600;height:30px;color: '.$color.';background:#e9ebee">'.strtoupper($value['answer']).' - Trả lời '.strtoupper($value['answerofuser']).'</p></div>';
 
             }
 //                $xhtml .= '</div>';
         }
         echo $xhtml;
     }
+
+
 }
 
-if (isset($_POST['id']) && isset($_POST['action'])) {
-//    $_SESSION['action'] = 'dotest';
+
+
+
+
+
+
+
+
+if (isset($_POST['id']) && isset($_POST['action'])) { // Khi người dùng bấm vào làm bài tại đây thì ngay lần đầu tiên chúng ta thêm vào cơ sơ dữ liệu
+    // Điều kiện đề in ra danh sách các đề đưuọc làm tiếp theo là
 
     $content = '<form method="post" name="form-add" id="form-do-test"><input type="hidden" name="done" value="'.$_POST['id'].'">';
     $id = htmlspecialchars($_POST['id']);
     $id = trim($id);
+
+    // Khi click vào nút yes thì insert id user là $_SESSION['id']
+    // và insert test_id là $id;
+    $database->table = 'do_test';
+    $insert = array('user_id'=>$_SESSION['id'],'test_id'=>$id);
+    $database->insert($insert);
+
 
     $database->table = 'test';
 
@@ -201,12 +218,16 @@ if (isset($_POST['id']) && isset($_POST['action'])) {
                         <p style="padding-left:10px;"><span>'.$val.'</span></p>
                     </div>';
         }
-        $temp .='<hr>
-                    </div>';
+        $temp .='<hr></div>';
         $content .=$temp;
 
     }
     $content .='</form>';
     echo $content;
     $_SESSION['answer'] = $result; // mảng kết quả
+    $_SESSION['timeout']=(time() + 30*60) * 1000;
+}
+
+if (isset($_POST['time'])) {
+    echo $_SESSION['timeout'];
 }

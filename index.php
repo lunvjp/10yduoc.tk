@@ -1,35 +1,4 @@
 <?php
-
-/*
- * Tạo 4 bảng
- * + user: PK: id - FK:
- * + test: PK: id
- * + question: PK: id - FK: test_id
- * + answer: PK: id - FK: test_id, user_id, question_id
- *
- *
- *
- *
- * * Chức năng:
- * 1. Phòng luyện
- * - random câu hỏi trong bộ đề, giới hạn thời gian làm bài, hiển thị top 10 người đứng đầu với làm được bao nhiêu câu hỏi (số câu đúng, số câu sai)
- * - vừa làm vừa có thể trò chuyện
- * - thời gian mở phòng luyện như làm nhiệm vụ sự kiện, được tăng thêm level, exp các kiểu
- * 2. Có các huy hiệu
- * - Huy hiệu level, huy hiệu BTĐL
- * 3. Chức năng làm lại tất cả các bài đã làm, có tùy chọn set thời gian và tạo ra số câu hỏi theo ý thích
- * 4. Chức năng tạo phòng luyện với bạn bè để solo nữa (giống y hệt phòng luyện bình thường chỉ có là có link mới vào được)
- */
-/*
- * Có thể giữ lại phần tìm mooner kh ạ ^^ và cả phần ô tính số bài tập đã làm của các môn khác nhau trong 1 tháng kh ạ ??! @@ như vậy em mới dễ quản lí việc học của mình hơn
- * - Nếu người dùng đã làm rồi thì lưu dữ liệu vô bảng này, nếu chưa làm thì ko có
-
-
- * * TODO:
- * 2. Trang xem tổng hợp các đề chỉ có tài khoản mới vào được.
- * 3. Có 1 danh sách các đề ở bên trái giống như w3schools.com hiển thị số % làm bài
- * 4. Trang index ko có nút
- */
 require_once "functions.php";
 require_once "connect.php";
 session_start();
@@ -133,6 +102,7 @@ if (isset($_POST['username']) && isset($_POST['password'])) {
         header("location: ./giaiphau");
         exit();
     } else {
+        $_SESSION['error'] = 'Tên đăng nhập hoặc mật khẩu không đúng';
         header("location: .");
         exit();
     }
@@ -141,60 +111,8 @@ if (isset($_POST['username']) && isset($_POST['password'])) {
 $html = '';
 $account = '';
 if (isset($_SESSION['username'])) { // đăng nhập thành công
-    // Truyền dữ liệu
-
     $account = "<a href='logout.php'>Đăng xuất</a>";
     $account .= ' Chào ' . $_SESSION['username'];
-
-//    $database->table = 'test';
-//    $query = "select a.id,a.name,count(b.question_id) as total from test as a, manage_test as b
-//              where a.id = b.test_id
-//              group by a.id";
-//    $database->query($query);
-//    $data = $database->select();
-//
-//    $donesentence = "select e.id, e.name, count(c.id) as donetotal
-//                    from user as a, do_question as b, question as c, manage_test as d, test as e
-//                    where a.id = b.user_id
-//                    and b.question_id = c.id
-//                    and d.question_id = c.id
-//                    and e.id = d.test_id
-//                    and a.id = " . $_SESSION['id'] . "
-//                    group by e.id";
-//    $database->query($donesentence);
-//    $donesentencelist = $database->select();
-//
-//
-////    echo '<pre>';print_r($donesentencelist);echo '</pre>';
-//    foreach ($data as $key => $value) {
-//        $idsentence = $value['id']; // tất cả mã đề từ bảng dữ liệu
-////        echo '<pre>';print_r($donesentencelist);echo '</pre>';
-//        $check = false;
-//        if (!empty($donesentencelist)) {
-//            foreach ($donesentencelist as $index => $val) {
-////                echo gettype($val);
-////            print_r($val);
-//                if ($idsentence == $val['id']) {
-////                if (in_array($idsentence,$val)) { // Nếu mã đề đã làm rồi thì khi click vào link sẽ hiển thị các câu đã làm
-//                    // nếu chưa làm thì khi clic kvaof thì vào trang làm bài
-//                    $html .= '<li>
-//                            <span><a onclick="seeDetail();" href=".?id=' . $value["id"] . '">' . $value["name"] . '</a></span>
-//                            <span style="padding-left:10px;color: yellowgreen">' . $val['donetotal'] . '/' . $value['total'] . '</span>
-//                            <span style="padding-left:10px;"><a style="color: yellowgreen" href="lambai.php?id=' . $value['id'] . '">Làm tiếp</a></span>
-//                        </li>';
-//                    $check = true;
-//                    break;
-//                }
-//            }
-//        }
-//
-//        //                 <span style="padding-left:10px;color: yellowgreen">'.$value['total'].'</span>
-//        if ($check == false) { // Chưa làm 1 câu hỏi nào trong mã đề này
-//            $html .= '<li>
-//                    <span><a href="lambai.php?id=' . $value["id"] . '">' . $value["name"] . '</a></span>
-//                </li>';
-//        }
-//    }
 }
 ?>
 
@@ -235,10 +153,18 @@ if (isset($_SESSION['username'])) { // đăng nhập thành công
 <div class="form-setup" style="border-right: none;"> <!-- Hiện các bộ đề đã làm ở đây -->
     <?php
     if (isset($_SESSION['success'])) {
-        echo "<div class='alert alert-success'>
+        echo "<div class='alert alert-success alert-dismissable fade in'>
+                <a href=\"#\" class=\"close\" data-dismiss=\"alert\" aria-label=\"close\">&times;</a>
                 <span style='width:100%;'>".$_SESSION['success']."</span>
             </div>";
         unset($_SESSION['success']);
+    }
+    if (isset($_SESSION['error'])) {
+            echo "<div class='alert alert-danger alert-dismissable fade in'>
+                <a href=\"#\" class=\"close\" data-dismiss=\"alert\" aria-label=\"close\">&times;</a>
+                <span style='width:100%;'>".$_SESSION['error']."</span>
+            </div>";
+        unset($_SESSION['error']);
     }
     ?>
     <ol>

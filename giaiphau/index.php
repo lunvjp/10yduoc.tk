@@ -1,4 +1,13 @@
 <?php
+/*
+ * Khi bắt đầu bấm vào nút OK thì tạo 1 session lưa vào time() hiện tại
+ * Khi thằng đấy đang làm bài thì thời gian bên trang đấy vẫn đang chạy và click vào đề đó là làm luôn, không hỏi lại nữa
+ *
+ * Bây giờ phải lấy ra thời gian hiện tại (ở server) khi nó click vào nút yes
+ * 2. Lấy thời gian đó + thêm 30 phút rồi truyền vào cho thằng đếm countdown
+ *
+ * Khi mà hết thời gian thì nó sẽ lưu
+ * */
 require_once "../class/Database.php";
 require_once "../connect.php";
 session_start();
@@ -9,6 +18,7 @@ if (!isset($_SESSION['username'])) {
 }
 
 if (isset($_POST['done'])) {
+
     $database->table = 'do_question';
 
     array_shift($_POST); // Xóa thằng input bị che đi
@@ -22,7 +32,7 @@ if (isset($_POST['done'])) {
     foreach ($done as $key => $value) {
         $right = $result[$key];
         $check = 0; //Wrong
-        if ($right == $value) { // Right
+        if (strtolower($right) == strtolower($value)) { // Right
             $check = 1;
         }
         $insert = array('user_id'=>$_SESSION['id'],'question_id'=>$key,'check'=>$check,'answerofuser'=>$value);
@@ -50,6 +60,11 @@ if (isset($_SESSION['username'])) { // đăng nhập thành công
     $database->query($query);
     $data = $database->select();
 
+    /* Lấy ra các id, tên của bộ đề, số câu của hỏi trong 1 đề
+     * Điều kiện để được làm bài test là
+     * + Không có câu hỏi nào trong bảng do_question
+     * + Không có đề nào trong bảng do_test
+     * */
     $donesentence = "select e.id, e.name, count(c.id) as donetotal
                     from user as a, do_question as b, question as c, manage_test as d, test as e, unit, subject
                     where a.id = b.user_id
@@ -64,16 +79,16 @@ if (isset($_SESSION['username'])) { // đăng nhập thành công
     $database->query($donesentence);
     $donesentencelist = $database->select();
 
-//    echo '<pre>';print_r($donesentencelist);echo '</pre>';
+//    echo '<pre>';print_r($donesentencelist);echo '</pre>'; die();
     foreach ($data as $key => $value) {
         $idsentence = $value['id']; // tất cả mã đề từ bảng dữ liệu
 //        echo '<pre>';print_r($donesentencelist);echo '</pre>';
         $check = false;
         if (!empty($donesentencelist)) {
-            foreach ($donesentencelist as $index => $val) {
+            foreach ($donesentencelist as $index => $val) { // duyệt qua vòng lặp này để xem id của đề có bằng id của trong bảng do_question hay không
 //                echo gettype($val);
 //            print_r($val);
-                if ($idsentence == $val['id']) {
+                if ($idsentence == $val['id']) { // nếu mã đề đó có câu hỏi trong bảng do_question hoặc là có trong bảng do_test thì đều rơi vào if này
                     // href=".?id=' . $value["id"] . '
 //                if (in_array($idsentence,$val)) { // Nếu mã đề đã làm rồi thì khi click vào link sẽ hiển thị các câu đã làm
                     $html .= '<li>
@@ -86,6 +101,28 @@ if (isset($_SESSION['username'])) { // đăng nhập thành công
                 }
             }
         }
+
+        // Nếu ra đây check vẫn bằng false thì kiểm tra 1 lần nữa
+        if ($check == false) {
+//            $database->table = 'do_test';
+            $query = "select * from do_test where test_id = $idsentence and user_id = ".$_SESSION['id']."";
+            $database->query($query);
+            $temp = $database->select();
+
+//            echo '<pre>';print_r($temp);echo '</pre>';
+//            die();
+            if (!empty($temp)) // tồn tại đề trong bảng do_test {
+            {
+                $check=true;
+                $html .= '<li>
+                            <span><a style="cursor: pointer;" onclick="seeResult('.$value['id'].')">' . $value["name"] . '</a></span> 
+                            <span style="padding-left:10px;color: yellowgreen">0/' . $value['total'] . '</span>
+                            <span style="padding-left:10px;"><a style="cursor: pointer;color: yellowgreen" onclick="doMoreQuestion('.$value['id'].')">Làm tiếp</a></span>
+                        </li>';
+            }
+        }
+
+
 
         //                 <span style="padding-left:10px;color: yellowgreen">'.$value['total'].'</span>
         if ($check == false) { // Chưa làm 1 câu hỏi nào trong mã đề này
@@ -116,37 +153,54 @@ if (isset($_SESSION['username'])) { // đăng nhập thành công
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
-    <script>
-        $(function(){
-//            $("#wrong-button").click(function(){
-//                alert("ngu");
-//            });
-            $(document).on ("click", "input", function () {
-                alert("hi");
-            });
-            $("input").click(function(){
-                console.log('ngu');
-                id = $(this).attr("class");
-                temp = 'div#'+id;
-                x = 'input'+'.'+id;
-
-//            $("input."+id).prop('disabled','true');
-                alert(id);
-
-                setTimeout(function(){
-                    $(temp).hide();
-                },200);
-            });
-        });
-
-    </script>
-
     <style>
         body {
             background: lightskyblue;
             font-family: "Segoe UI", Arial, sans-serif;
         }
+
+        .form-setup a:hover {
+            text-decoration: none;
+        }
+
+        .content {
+            border: 1px solid grey;
+            padding:0;
+            box-sizing: border-box;
+            position: fixed;
+            top: 35px;
+            bottom: 38px;
+            left: 30%;
+            width: 70%;
+            overflow-x: hidden;
+            overflow-y: auto;
+            background-color: white;
+            border-top: none;
+        }
+
+        .content .question {
+            font-family: "Times New Roman", sans-serif;
+            padding-top: 20px;
+        }
+
+        .content .question hr {
+            width: 100%;
+            height: 1px;
+            background-color: grey;
+            margin: 0;
+        }
+
+        .content #id {
+            background:  lightskyblue;
+        }
+
+        .auto-padding {
+            padding-top: 40px;
+        }
     </style>
+    <script>
+
+    </script>
 </head>
 <body>
 
@@ -161,7 +215,7 @@ if (isset($_SESSION['username'])) { // đăng nhập thành công
                 <h4 class="modal-title">Thông báo</h4>
             </div>
             <div class="modal-body">
-                <p>Bạn có muốn làm đề này không?</p>
+                <p>Bạn có chắc chắn muốn làm đề này không?</p>
             </div>
             <div class="modal-footer">
                 <button id="yes" type="button" class="btn btn-success" data-dismiss="modal">Yes</button>
@@ -198,12 +252,11 @@ if (isset($_SESSION['username'])) { // đăng nhập thành công
 </div>
 
 <div class="content"> <!-- Hiển thị số câu đã làm ở đây -->
-    <div id="ajax-load" style="display: none; height: 100px; width: 160px; margin: auto;">
+    <div id="ajax-load" style="display: none; height: 100px; width: 160px; margin: auto; margin-top:20px">
         <i class="fa fa-spinner fa-spin" style="font-size: 7em; color: #D9ECFF;"></i>
     </div>
-    <div id="choiceuser">
-
-    </div>
+    <div id="time" style="position:fixed;width:100%;display: none;background: lightskyblue; height:40px;border-bottom:1px solid grey;font-size:25px;font-weight: bold;font-family: Arial,sans-serif;color: #ffff80;line-height: 40px;padding-left:10px;"><span>BẮT ĐẦU</span></div>
+    <div id="choiceuser"></div>
     <div class="form-add-submit" style="position: fixed;">
         <?php
         // Session này sẽ kéo dài đúng với số thời gian của đề
