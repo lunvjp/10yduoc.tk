@@ -68,10 +68,6 @@ function getLink(id) { // id = testid
 }
 
 $(function(){
-    if (!$("#account").html()) {
-        location.reload(true);
-    }
-
     $("#yes").click(function(){ // Bắt đầu làm 1 đề mới ở đây
         $("#choiceuser").empty().removeClass('auto-padding');
         $("#ajax-load").css('display','block');

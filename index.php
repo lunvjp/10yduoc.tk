@@ -3,116 +3,98 @@ require_once "functions.php";
 require_once "connect.php";
 session_start();
 
-
-$fullname = '';
-$username = '';
-$password = '';
-$errorFullname = '';
-$errorUsername = '';
-$errorPassword = '';
-
-if (isset($_POST['fullname']) && isset($_POST['usernameregister']) && isset($_POST['passwordregister'])) {
-//    die('NGU');
-    $fullname = $_POST['fullname'];
-    $username = $_POST['usernameregister'];
-    $password = $_POST['passwordregister'];
-
-    if (!$fullname) {
-        $errorFullname = 'Bạn chưa nhập họ tên';
-//        $_SESSION['errorFullname'] = 'Bạn chưa nhập họ tên';
-    }
-    if (!$username) {
-        $errorUsername = 'Bạn chưa nhập tên đăng nhập';
-//        $_SESSION['errorUsername'] = 'Bạn chưa nhập tên đăng nhập';
-    }
-    if (!$password) {
-        $errorPassword = 'Bạn chưa nhập mật khẩu';
-//        $_SESSION['errorPassword'] = 'Bạn chưa nhập mật khẩu';
-    }
-
-    // Kiểm tra tên đăng nhập có bị trùng hay không
-    $database->table = 'user';
-    $query = "select username from user";
-    $database->query($query);
-    $usernamelist = $database->select();
-//    echo '<pre>';print_r($usernamelist);echo '</pre>';
-//     die();
-
-    $database->query("select max(id) as lastid from user");
-    $lastid = $database->select()[0]['lastid'];
-//    echo '<pre>';print_r($lastid);echo '</pre>';
-    foreach($usernamelist as $key => $value) {
-        if (in_array($username, $value)) // bị trùng
-        {
-            $errorUsername = 'Tài khoản đã tồn tại';
-//            $_SESSION['errorUsername'] = 'Tài khoản đã tồn tại';
-            break;
-        }
-    }
-
-
-    //----------------------------------------------
-    if (!$errorFullname && !$errorUsername && !$errorPassword) {
-//        echo gettype($lastid);
-//        $insert['id'] = $lastid+1;
-//        $insert['username'] = $username;
-//        $insert['password'] = $password;
-//        $insert['fullname'] = $fullname;
-        $insert = array('id' => $lastid + 1, 'username' => $username, 'password' => $password, 'fullname' => $fullname);
-//        echo '<pre>';print_r($insert);echo '</pre>';
-        $database->insert($insert, 'single');
-        if ($database->showRows()>0) {
-            $_SESSION['success'] = 'Tạo thành công';
-            header('location: .');
-            exit();
-        } else {
-//            $_SESSION['']
-        }
-    }
-}
-
-
-if (isset($_POST['username']) && isset($_POST['password'])) {
-    // Tìm trong CSDL nếu thấy giống thì làm
-    $username = mysql_real_escape_string($_POST['username']);
-    $password = mysql_real_escape_string($_POST['password']);
-
-    $database->table = 'user';
-    $query[] = "select *";
-    $query[] = "from `user`";
-    $query[] = "where `username` = '$username'";
-    $query[] = "and `password` = '$password'";
-    $query = implode(' ', $query);
-    $database->query($query);
-
-    $ketqua = $database->select();
-    $ketqua = $ketqua[0];
-
-    if (!empty($ketqua)) // Đăng nhập thành công
-    {
-//        echo '<pre>';
-//        print_r($ketqua);
-//        echo '</pre>';
-        $id = $ketqua['id'];
-        $username = $ketqua['username'];
-
-//        echo $ketqua['username'];
-        $_SESSION['id'] = $id;
-        $_SESSION['username'] = $username;
-        header("location: ./giaiphau");
-        exit();
-    } else {
-        $_SESSION['error'] = 'Tên đăng nhập hoặc mật khẩu không đúng';
-        header("location: .");
-        exit();
-    }
-}
-
 $html = '';
-$account = '';
-if (isset($_SESSION['username'])) { // đăng nhập thành công
-    $account = "<a href='logout.php'>Đăng xuất</a>";
-    $account .= ' Chào ' . $_SESSION['username'];
+//$account = '';
+//if (isset($_SESSION['username'])) { // đăng nhập thành công
+//    $account = "<a href='logout.php'>Đăng xuất</a>";
+//    $account .= ' Chào ' . $_SESSION['username'];
+//    header("location: ./giaiphau/");
+//    exit();
+//}
+
+$database->table = 'test';
+$query = "select test.id, test.name, count(manage_test.question_id) as total from subject, unit, test, manage_test
+                where manage_test.test_id = test.id
+                and test.unit_id = unit.id
+                and unit.subject_id = subject.id
+                and subject.id = 1
+                group by test.id";
+$database->query($query);
+$data = $database->select();
+
+foreach ($data as $key => $value) {
+    if ($key <= 4) {
+        $html .= '<li><span><a style="cursor: pointer;color: yellowgreen" onclick="doTest(' . $value['id'] . ')">' . $value["name"] . '</a></span></li>';
+    } else {
+        $html .= '<li><span><a style="cursor: pointer;color: red;" data-toggle="modal" data-target="#myModal">' . $value["name"] . '</a></span></li>';
+    }
+}
+
+$content = '<form method="post" name="form-add" id="form-do-test"><input type="hidden" name="done" value="1">';
+
+$query = "select a.id,a.name as question,a.a,a.b,a.c,a.d,a.e,a.f,a.answer FROM question as a, manage_test as b, test
+                where a.id = b.question_id
+                and b.test_id = test.id
+                and test.id = 1";
+$database->query($query);
+$data = $database->select();
+
+$result = array();
+foreach ($data as $key => $value) {
+    if ($key == 20) break;
+    $result[$value['id']] = $value['answer'];
+
+    $item['A'] = $value['a'];
+    $item['B'] = $value['b'];
+    $item['C'] = $value['c'];
+    $item['D'] = $value['d'];
+    if ($value['e']) $item['E'] = $value['e'];
+    if ($value['f']) $item['F'] = $value['f'];
+
+
+    $temp = '<div class="question" id="'.$value['id'].'">
+                    <div class="item">
+                        <p class="title">Câu ' . ($key+1) . '.</p>
+                        <p class="title-content">' . $value['question'] . '</p>
+                    </div>';
+    foreach($item as $i => $val) {
+        $temp .= '<div class="item">
+                        <p class="answer">'.$i.'.</p>
+                        <p style="width:2%;vertical-align: middle;"><input class="'.$value['id'].'" value="'.strtolower($i).'" type="radio" name="'.$value['id'].'"></p>
+                        <p style="padding-left:10px;"><span>'.$val.'</span></p>
+                    </div>';
+    }
+    $temp .='<hr></div>';
+    $content .=$temp;
+
+}
+$content .='</form>';
+if (!isset($_SESSION['answer'])) $_SESSION['answer'] = $result;
+
+
+if (isset($_POST['done'])) {
+    $database->table = 'do_question';
+
+    array_shift($_POST); // Xóa thằng input bị che đi
+    $result = $_SESSION['answer'];
+
+    $done = $_POST;
+
+    $dem = 0;
+    foreach ($done as $key => $value) {
+        $right = $result[$key];
+        if (strtolower($right) == strtolower($value)) { // Right
+            $dem++; // số câu đúng
+        }
+    }
+
+    $_SESSION['result'] = "<div style='position: relative;' class='alert alert-success alert-dismissable fade in'>
+                        <a href=\"#\" class=\"close\" data-dismiss=\"alert\" aria-label=\"close\">&times;</a>
+                        <span style='width:100%;'>Kết quả: " . $dem . "/20</span>
+                        <span style='width:100%;'>Đăng nhập để xem chi tiết đáp án và làm thêm thật nhiều đề nhé</span>
+                    </div>";
+    header('location: .');
+    exit();
 }
 ?>
 
@@ -132,7 +114,38 @@ if (isset($_SESSION['username'])) { // đăng nhập thành công
         }
 
         .content {
-            background-color: lightskyblue;
+            border: 1px solid grey;
+            padding:0;
+            box-sizing: border-box;
+            position: fixed;
+            top: 35px;
+            bottom: 38px;
+            left: 30%;
+            width: 70%;
+            overflow-x: hidden;
+            overflow-y: auto;
+            background-color: white;
+            border-top: none;
+        }
+
+        .content .question {
+            font-family: "Times New Roman", sans-serif;
+            padding-top: 20px;
+        }
+
+        .content .question hr {
+            width: 100%;
+            height: 1px;
+            background-color: grey;
+            margin: 0;
+        }
+
+        .content #id {
+            background:  lightskyblue;
+        }
+
+        .auto-padding {
+            padding-top: 40px;
         }
     </style>
 </head>
@@ -143,177 +156,62 @@ if (isset($_SESSION['username'])) { // đăng nhập thành công
     <a href="." title="Home"><i class="fa fa-home" style="line-height: 35px;"  aria-hidden="true"></i></a>
     <a href="./giaiphau" title="Làm Đề Giải Phẫu">GIẢI PHẪU</a>
     <a href="./sinhditruyen" title="Làm Đề Giải Phẫu">SINH DI TRUYỀN</a>
-    <div style="float: right;margin-right:10px;">
+    <div id="account" style="float: right;margin-right:10px;">
         <?php
-        if (isset($_SESSION['username']) && $_SESSION['username'] == 'momabz6') echo "<a href='edit.php'>CHỈNH SỬA ĐỀ</a>";
-        echo $account; ?>
+        if (isset($_SESSION['info'])) echo $_SESSION['info'];
+        ?>
     </div>
 </div>
 
 <div class="form-setup" style="border-right: none;"> <!-- Hiện các bộ đề đã làm ở đây -->
-    <?php
-    if (isset($_SESSION['success'])) {
-        echo "<div class='alert alert-success alert-dismissable fade in'>
-                <a href=\"#\" class=\"close\" data-dismiss=\"alert\" aria-label=\"close\">&times;</a>
-                <span style='width:100%;'>".$_SESSION['success']."</span>
-            </div>";
-        unset($_SESSION['success']);
-    }
-    if (isset($_SESSION['error'])) {
-            echo "<div class='alert alert-danger alert-dismissable fade in'>
-                <a href=\"#\" class=\"close\" data-dismiss=\"alert\" aria-label=\"close\">&times;</a>
-                <span style='width:100%;'>".$_SESSION['error']."</span>
-            </div>";
-        unset($_SESSION['error']);
-    }
-    ?>
+    <a href="javascript:void(0);" onclick="fbLogin()" id="fbLink"><img src="images/fblogin.png"></a>
     <ol>
         <?php echo $html; ?>
     </ol>
 </div>
 
 <div class="content"> <!-- Hiển thị số câu đã làm ở đây -->
-    <?php
-    if (!isset($_SESSION['username'])) { // Đăng nhập không thành công
-        ?>
 
-        <div class="form-login">
-            <div class="container">
-                <h2>Đăng nhập làm đề</h2>
-                <form class="form-horizontal" action="" method="post">
-                    <div class="form-group">
-                        <label class="control-label col-sm-2" for="email">Username:</label>
-                        <div class="col-sm-5">
-                            <input type="text" class="form-control" id="username" placeholder="Enter username"
-                                   name="username">
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="control-label col-sm-2" for="pwd">Password:</label>
-                        <div class="col-sm-5">
-                            <input type="password" class="form-control" id="pwd" placeholder="Enter password"
-                                   name="password">
-                        </div>
-                    </div>
-                    <!--        <div class="form-group">-->
-                    <!--            <div class="col-sm-offset-2 col-sm-10">-->
-                    <!--                <div class="checkbox">-->
-                    <!--                    <label><input type="checkbox" name="remember"> Remember me</label>-->
-                    <!--                </div>-->
-                    <!--            </div>-->
-                    <!--        </div>-->
-                    <div class="form-group">
-                        <div class="col-sm-offset-2 col-sm-10">
-                            <button type="submit" class="btn btn-info">Đăng nhập</button>
-                            <!--                            <button type="button" class="btn btn-info" style="margin-left:10px;" id="register-button">Tạo tài khoản</button>-->
-                        </div>
-                    </div>
-                </form>
-            </div>
-        </div>
-        <div class="register" style="margin-top:20px;height:370px;background-color: rgba(0,0,0,0.2);">
-            <div class="container-fluid">
-                <h2>Tạo tài khoản</h2>
-                <form action="" method="post" id="form-register" name="form-register">
-                    <div class="form-group">
-                        <label for="email">Họ và tên:</label>
-                        <input type="text" class="form-control" id="fullname" placeholder="Enter full name"
-                               name="fullname" value="<?php echo $fullname; ?>">
-                        <span style="color: red;"><?php echo $errorFullname; ?></span>
-                    </div>
-                    <div class="form-group">
-                        <label for="email">Tên đăng nhập:</label>
-                        <input type="text" class="form-control" id="usernameregister" placeholder="Enter email"
-                               name="usernameregister" value="<?php echo $username; ?>">
-                        <span style="color: red;"><?php echo $errorUsername; ?></span>
-                    </div>
-                    <div class="form-group">
-                        <label for="pwd">Mật khẩu:</label>
-                        <input type="password" class="form-control" id="passwordregister" placeholder="Enter password"
-                               name="passwordregister" value="<?php echo $password; ?>">
-                        <span style="color: red;"><?php echo $errorPassword; ?></span>
-                    </div>
-                    <button type="submit" class="btn btn-success">Tạo tài khoản</button>
-                </form>
-            </div>
-        </div>
+        <div id="time"
+             style="position:fixed;width:100%;background: lightskyblue; height:40px;border-bottom:1px solid grey;font-size:25px;font-weight: bold;font-family: Arial,sans-serif;color: #ffff80;line-height: 40px;padding-left:10px;">
+            <span>BẮT ĐẦU</span></div>
+
+    <div id="result"><?php
+        if (isset($_SESSION['result'])) {
+            echo $_SESSION['result'];
+        }
+        ?></div>
+
+    <div id="ajax-load" style="display: none; height: 100px; width: 160px; margin: auto; margin-top:60px">
+        <i class="fa fa-spinner fa-spin" style="font-size: 7em; color: #D9ECFF;"></i>
+    </div>
 
 
+
+
+    <div id="choiceuser" style="padding-top: 40px">
         <?php
-    } else {
+        if (!isset($_SESSION['result'])) echo $content;
+        else unset($_SESSION['result']);
         ?>
-        <div id="choiceuser">
-            <?php
-            //-----------------------------------------------------------
-            // Hiển thị các câu đã làm (do_question) trong 1 đề (test) của user (user)
-            //
-            if (isset($_GET['id'])) {
-                $query = "SELECT b.id, b.name, b.a, b.b, b.c, b.d, b.e, b.f, a.check, a.answerofuser, b.answer
-                        from do_question as a, question as b, manage_test as c, test as d
-                        where a.question_id = b.id
-                        and c.question_id = b.id
-                        and c.test_id = d.id
-                        and a.user_id = " . $_SESSION['username'] . "
-                        and d.id = " . $_GET['id']."";
-                $database->query($query);
-                $detailofdonesentence = $database->select();
+    </div>
 
-                $xhtml = '';
-                if (!empty($detailofdonesentence)) {
-                    foreach ($detailofdonesentence as $key => $value) {
-                        $xhtml .= '<div class="question">
-                                    <div class="item">
-                                        <p class="title">Câu ' . ($key + 1) . '.</p>
-                                        <p class="title-content">' . $value['name'] . '</p>
-                                    </div>';
-                        $temp['A'] = $value['a'];
-                        $temp['B'] = $value['b'];
-                        $temp['C'] = $value['c'];
-                        $temp['D'] = $value['d'];
-                        if ($value['e']) $temp['E'] = $value['e'];
-                        if ($value['f']) $temp['F'] = $value['f'];
-
-                        foreach ($temp as $key2 => $value2) {
-                            $xhtml .= '<div class="item">
-                                <p class="answer">' . $key2 . '.</p>
-                                <p>' . $value2 . '</p>
-                            </div>';
-                        }
-
-                        $color = $value['check'] == 0 ? 'red' : 'blue';
-
-                        $xhtml .= '<p style="padding-left:10px;display:block;font-family:Arial,sans-serif;font-size:13px;line-height:30px;font-weight: 600;height:30px;color: ' . $color . ';background:#e9ebee">' . strtoupper($value['answer']) . ' - Trả lời ' . strtoupper($value['answerofuser']) . '</p></div>';
-
-                    }
-//                $xhtml .= '</div>';
-                }
-                echo $xhtml;
-            }
-            ?>
-        </div>
-
-        <?php
-    }
-    ?>
 
     <div class="form-add-submit" style="position: fixed;">
+        <form id="form-fade" method="post"></form>
         <?php
-        if (isset($_SESSION['id'])) { // Đăng nhập thành công
+//        if (isset($_SESSION['id'])) { // Đăng nhập thành công
             ?>
-            <form method="post" name="form-edit">
-                <input hidden id="wrongsentence" name="wrongsentence"
-                       value="<?php if (isset($_GET['id'])) echo $_GET['id']; ?>">
-                <button type="button" id="wrong-button">Bài làm sai</button>
-                <button type="button" id="right-button">Bài làm đúng</button>
-                <!--                <button><a href=".">Quay lại</a></button>-->
-            </form>
+<!--            <button type="button" id="wrong-button">Bài làm sai</button>-->
+<!--            <button type="button" id="right-button">Bài làm đúng</button>-->
+        <button type="button" id="submit-button">Nộp bài</button>
         <?php
-        }
+//        }
         ?>
 
     </div>
 </div>
-<script src="./js/check.js"></script>
+<script src="check.js"></script>
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
 </body>

@@ -1,23 +1,24 @@
 <?php
+require_once "../class/Database.php";
 require_once "../connect.php";
 session_start();
 
-if (isset($_POST['done'])) {
+if (!isset($_SESSION['username'])) {
+    header('location: ..');
+    exit();
+}
 
+if (isset($_POST['done'])) {
     $database->table = 'do_question';
 
-    array_shift($_POST); // Xóa thằng input bị che đi
+    array_shift($_POST);
     $result = $_SESSION['answer'];
-
-//    echo '<pre>';print_r($_SESSION['answer']);echo '</pre>';
     $done = $_POST;
-//    echo '<pre>';print_r($done);echo '</pre>';
 
-//    die();
     foreach ($done as $key => $value) {
         $right = $result[$key];
-        $check = 0; //Wrong
-        if (strtolower($right) == strtolower($value)) { // Right
+        $check = 0;
+        if (strtolower($right) == strtolower($value)) {
             $check = 1;
         }
         $insert = array('user_id'=>$_SESSION['id'],'question_id'=>$key,'check'=>$check,'answerofuser'=>$value);
@@ -29,30 +30,20 @@ if (isset($_POST['done'])) {
 }
 
 $result = array();
-$data = array();
-
 
 $html = '';
-if (isset($_SESSION['username'])) { // đăng nhập thành công
-    $database->table = 'test';
-//    $query = "select a.id,a.name,count(b.question_id) as total from test as a, manage_test as b
-//              where a.id = b.test_id
-//              group by a.id";
+$account = '';
+if (isset($_SESSION['username'])) {
+    $account = "<a href='../logout.php'>Đăng xuất</a>";
+    $account .= ' Chào ' . $_SESSION['username'];
 
-    $query = "select test.id, test.name, count(manage_test.question_id) as total from subject, unit, test, manage_test
-                where manage_test.test_id = test.id
-                and test.unit_id = unit.id
-                and unit.subject_id = subject.id
-                and subject.id = 1
-                group by test.id";
+    $database->table = 'test';
+    $query = "select a.id,a.name,count(b.question_id) as total from test as a, manage_test as b
+              where a.id = b.test_id
+              group by a.id";
     $database->query($query);
     $data = $database->select();
 
-    /* Lấy ra các id, tên của bộ đề, số câu của hỏi trong 1 đề
-     * Điều kiện để được làm bài test là
-     * + Không có câu hỏi nào trong bảng do_question
-     * + Không có đề nào trong bảng do_test
-     * */
     $donesentence = "select e.id, e.name, count(c.id) as donetotal
                     from user as a, do_question as b, question as c, manage_test as d, test as e, unit, subject
                     where a.id = b.user_id
@@ -67,18 +58,12 @@ if (isset($_SESSION['username'])) { // đăng nhập thành công
     $database->query($donesentence);
     $donesentencelist = $database->select();
 
-//    echo '<pre>';print_r($donesentencelist);echo '</pre>'; die();
     foreach ($data as $key => $value) {
-        $idsentence = $value['id']; // tất cả mã đề từ bảng dữ liệu
-//        echo '<pre>';print_r($donesentencelist);echo '</pre>';
+        $idsentence = $value['id'];
         $check = false;
         if (!empty($donesentencelist)) {
-            foreach ($donesentencelist as $index => $val) { // duyệt qua vòng lặp này để xem id của đề có bằng id của trong bảng do_question hay không
-//                echo gettype($val);
-//            print_r($val);
-                if ($idsentence == $val['id']) { // nếu mã đề đó có câu hỏi trong bảng do_question hoặc là có trong bảng do_test thì đều rơi vào if này
-                    // href=".?id=' . $value["id"] . '
-//                if (in_array($idsentence,$val)) { // Nếu mã đề đã làm rồi thì khi click vào link sẽ hiển thị các câu đã làm
+            foreach ($donesentencelist as $index => $val) {
+                if ($idsentence == $val['id']) {
                     $html .= '<li>
                             <span><a style="cursor: pointer;" onclick="seeResult('.$value['id'].')">' . $value["name"] . '</a></span> 
                             <span style="padding-left:10px;color: yellowgreen">' . $val['donetotal'] . '/' . $value['total'] . '</span>
@@ -90,17 +75,12 @@ if (isset($_SESSION['username'])) { // đăng nhập thành công
             }
         }
 
-        // Nếu ra đây check vẫn bằng false thì kiểm tra 1 lần nữa
         if ($check == false) {
-//            $database->table = 'do_test';
             $query = "select * from do_test where test_id = $idsentence and user_id = ".$_SESSION['id']."";
             $database->query($query);
             $temp = $database->select();
 
-//            echo '<pre>';print_r($temp);echo '</pre>';
-//            die();
-            if (!empty($temp)) // tồn tại đề trong bảng do_test {
-            {
+            if (!empty($temp)) {
                 $check=true;
                 $html .= '<li>
                             <span><a style="cursor: pointer;" onclick="seeResult('.$value['id'].')">' . $value["name"] . '</a></span> 
@@ -110,27 +90,12 @@ if (isset($_SESSION['username'])) { // đăng nhập thành công
             }
         }
 
-
-
-        //                 <span style="padding-left:10px;color: yellowgreen">'.$value['total'].'</span>
-        if ($check == false) { // Chưa làm 1 câu hỏi nào trong mã đề này
+        if ($check == false) {
             $html .= '<li>
                     <span><a style="cursor: pointer" data-toggle="modal" data-target="#myModal" onclick="getLink('.$value['id'].')">' . $value["name"] . '</a></span>
                 </li>';
-//            break;
-            // href="?action=dotest&id=' . $value["id"] . '"
-            // onclick thì window
         }
     }
-
-//    echo $_SERVER['PHP_SELF'];
-//    $test =  parse_url($_SERVER['HTTP_REFERER']);
-//    echo '<pre>';print_r($test);echo '</pre>';
-//    echo preg_match_all("#.*/(.*)/lambai\.php#",$_SERVER['PHP_SELF'],$link);
-//    echo '<pre>';print_r($link);echo '</pre>';
-} else {
-    header('location: ..');
-    exit();
 }
 ?>
 
@@ -195,11 +160,8 @@ if (isset($_SESSION['username'])) { // đăng nhập thành công
 </head>
 <body>
 
-<!-- Modal -->
 <div id="myModal" class="modal fade" role="dialog">
     <div class="modal-dialog">
-
-        <!-- Modal content-->
         <div class="modal-content">
             <div class="modal-header">
                 <button type="button" class="close" data-dismiss="modal">&times;</button>
@@ -213,34 +175,21 @@ if (isset($_SESSION['username'])) { // đăng nhập thành công
                 <button type="button" class="btn btn-danger" data-dismiss="modal">No</button>
             </div>
         </div>
-
     </div>
 </div>
-
 
 
 <div class="mynavbar">
-    <!--                <a href="" class="topnav-icons fa fa-menu w3-hide-large w3-left w3-bar-item w3-button" title="Menu"></a>-->
     <a href=".." title="Home"><i class="fa fa-home" style="line-height: 35px;"  aria-hidden="true"></i></a>
-    <a href="." title="Làm Đề Giải Phẫu">GIẢI PHẪU</a>
+    <a href="../giaiphau" title="Làm Đề Giải Phẫu">GIẢI PHẪU</a>
     <a href="../sinhditruyen" title="Làm Đề Sinh Di Truyền">SINH DI TRUYỀN</a>
-    <div id="account" style="float: right;margin-right:10px;">
-        <?php
-            if (isset($_SESSION['email']) && $_SESSION['email'] == 'lunvjp@gmail.com') echo "<a href='../edit.php'>CHỈNH SỬA ĐỀ</a>";
-            if (isset($_SESSION['info'])) echo $_SESSION['info'];
-         ?>
+    <a href="." title="Làm Đề Listening">ENGLISH</a>
+    <div style="float: right;margin-right:10px;">
+        <?php echo $account; ?>
     </div>
 </div>
 
-<div class="form-setup" style="border-right: none;"> <!-- Hiện các bộ đề đã làm ở đây -->
-    <?php
-    if (isset($_SESSION['success'])) {
-        echo "<div class='alert alert-success'>
-                <span style='width:100%;'>".$_SESSION['success']."</span>
-            </div>";
-        unset($_SESSION['success']);
-    }
-    ?>
+<div class="form-setup" style="border-right: none;">
     <ol><?php echo $html; ?>
     </ol>
 </div>
@@ -252,17 +201,6 @@ if (isset($_SESSION['username'])) { // đăng nhập thành công
     <div id="time" style="position:fixed;width:100%;display: none;background: lightskyblue; height:40px;border-bottom:1px solid grey;font-size:25px;font-weight: bold;font-family: Arial,sans-serif;color: #ffff80;line-height: 40px;padding-left:10px;"><span>BẮT ĐẦU</span></div>
     <div id="choiceuser"></div>
     <div class="form-add-submit" style="position: fixed;">
-        <?php
-        // Session này sẽ kéo dài đúng với số thời gian của đề
-        // nếu còn thời gian làm bài thì nút nộp bài còn hiển thị
-        /*
-         * Khi nào ổn định thì cài chỉ cần click vào input là nộp bài, kết quả lưu lại. hết giờ làm bài mới đc xem kết quả
-         *
-         */
-//        if (isset($_SESSION['action']) && $_SESSION['action'] == 'dotest') {
-            ?>
-
-
             <form method="post" name="form-edit">
                 <input type="hidden" id="wrongsentence" name="wrongsentence"
                        value="<?php if (isset($_SESSION['testid'])) echo $_SESSION['testid']; ?>">
@@ -273,42 +211,6 @@ if (isset($_SESSION['username'])) { // đăng nhập thành công
             </form>
     </div>
 </div>
-<script>
-    $(function(){
-        $("input").click(function(){
-            console.log('ngu');
-            id = $(this).attr("class");
-            temp = 'div#'+id;
-            x = 'input'+'.'+id;
-
-//            $("input."+id).prop('disabled','true');
-            alert(id);
-
-            setTimeout(function(){
-                $(temp).hide();
-            },200);
-        });
-
-    });
-
-
-    window.fbAsyncInit = function() {
-        FB.init({
-            appId      : '309350989506967', // FB App ID 309350989506967
-            cookie     : true,  // enable cookies to allow the server to access the session
-            xfbml      : true,  // parse social plugins on this page
-            version    : 'v2.8' // use graph api version 2.8
-        });
-    };
-
-    (function(d, s, id) {
-        var js, fjs = d.getElementsByTagName(s)[0];
-        if (d.getElementById(id)) return;
-        js = d.createElement(s); js.id = id;
-        js.src = "//connect.facebook.net/en_US/sdk.js";
-        fjs.parentNode.insertBefore(js, fjs);
-    }(document, 'script', 'facebook-jssdk'));
-</script>
 <script src="check.js"></script>
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>

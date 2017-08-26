@@ -1,8 +1,24 @@
 <?php
-require_once "connect.php";
+require_once "../connect.php";
 session_start();
 
+if (isset($_POST['title'])) {
+    $title = $_POST['title'];
+    if (!$title) echo "<div class='error'>You can't leave this empty.</div>";
+}
+
+if (isset($_POST['sentence'])) {
+    $sentence = $_POST['sentence'];
+    if (!$sentence) echo "<div class='error'>You can't leave this empty.</div>";
+}
+
+if (isset($_POST['question'])) {
+    echo $_POST['question'];
+}
+
+//echo '<pre>';print_r($_POST);echo '</pre>';
 if (isset($_POST['id']) && isset($_POST['type'])) {
+//    unset($_SESSION['time']);
     $_SESSION['testid'] = $_POST['id'];
 
     if ($_POST['type'] == 'wronganswer') {
@@ -151,30 +167,35 @@ if (isset($_POST['id']) && isset($_POST['type'])) {
 
 
 
-if (isset($_POST['id']) && isset($_POST['action'])) {
+if (isset($_POST['id']) && isset($_POST['action'])) { // Khi người dùng bấm vào làm bài tại đây thì ngay lần đầu tiên chúng ta thêm vào cơ sơ dữ liệu
+    // Điều kiện đề in ra danh sách các đề đưuọc làm tiếp theo là
+
     $content = '<form method="post" name="form-add" id="form-do-test"><input type="hidden" name="done" value="'.$_POST['id'].'">';
     $id = htmlspecialchars($_POST['id']);
     $id = trim($id);
 
     // Khi click vào nút yes thì insert id user là $_SESSION['id']
     // và insert test_id là $id;
-//    $database->table = 'do_test';
-//    $insert = array('user_id'=>$_SESSION['id'],'test_id'=>$id);
-//    $database->insert($insert);
+    $database->table = 'do_test';
+    $insert = array('user_id'=>$_SESSION['id'],'test_id'=>$id);
+    $database->insert($insert);
 
 
     $database->table = 'test';
 
     $query = "select a.id,a.name as question,a.a,a.b,a.c,a.d,a.e,a.f,a.answer FROM question as a, manage_test as b, test
-                where a.id = b.question_id
-                and b.test_id = test.id
-                and test.id = $id";
+            where a.id = b.question_id
+            and b.test_id = test.id
+            and test.id = $id
+            and a.id not in (
+                select do_question.question_id from do_question
+                where user_id = ".$_SESSION['id']."
+            )";
     $database->query($query);
     $data = $database->select();
 
     $result = array();
     foreach ($data as $key => $value) {
-        if ($key == 20) break;
         $result[$value['id']] = $value['answer'];
 
         $item['A'] = $value['a'];
@@ -204,9 +225,9 @@ if (isset($_POST['id']) && isset($_POST['action'])) {
     $content .='</form>';
     echo $content;
     $_SESSION['answer'] = $result; // mảng kết quả
-//    $_SESSION['timeout']=(time() + 30*60) * 1000;
+    $_SESSION['timeout']=(time() + 30*60) * 1000;
 }
 
-//if (isset($_POST['time'])) {
-//    echo $_SESSION['timeout'];
-//}
+if (isset($_POST['time'])) {
+    echo $_SESSION['timeout'];
+}
